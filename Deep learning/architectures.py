@@ -59,6 +59,40 @@ class ShallowRegressionLSTM(nn.Module):
         out = self.linear(hn[0]).flatten()  # First dim of Hn is num_layers, which is set to 1 above.
 
         return out
+    
+    
+class GRU(nn.Module):
+    def __init__(self, num_sensors, hidden_units):
+        super().__init__()
+        self.num_sensors = num_sensors  # this is the number of features
+        self.hidden_units = hidden_units
+        self.num_layers = 3
+
+        self.GRU = nn.GRU(
+            input_size=num_sensors,
+            hidden_size=hidden_units,
+            batch_first=True,
+            num_layers=self.num_layers,
+            dropout=0.3
+        )
+
+        self.linear = nn.Sequential(
+            nn.Linear(in_features=self.hidden_units, out_features=self.hidden_units),
+            nn.Dropout(0.3),
+            nn.ReLU(),
+            nn.BatchNorm1d(self.hidden_units),
+            nn.Linear(in_features=self.hidden_units, out_features=1)
+        )
+
+    def forward(self, x):
+        batch_size = x.shape[0]
+        h0 = torch.zeros(self.num_layers, batch_size, self.hidden_units).requires_grad_()
+        c0 = torch.zeros(self.num_layers, batch_size, self.hidden_units).requires_grad_()
+        _, hn = self.GRU(x)
+        out = self.linear(hn[0]).flatten()  # First dim of Hn is num_layers, which is set to 1 above.
+
+        return out
+
 
 
 class Encoder(nn.Module):
@@ -160,8 +194,8 @@ class Seq2Seq(nn.Module):
         super().__init__()
         self.num_sensors = num_sensors
         self.hidden_units = hidden_units
-        self.encoder = Encoder(num_sensors, num_hidden_units)
-        self.decoder = Decoder(num_sensors, num_hidden_units)
+        self.encoder = Encoder(num_sensors, hidden_units)
+        self.decoder = Decoder(num_sensors, hidden_units)
         self.attention = Attention(num_sensors, 1, 0.1)
 
         self.linear = nn.Sequential(
@@ -178,7 +212,7 @@ class Seq2Seq(nn.Module):
         out, hn, cn = self.encoder(x)
         attention, attention_score = self.attention(query=x, key=x,
                                                     value=x)
-        # outputs = x + attention
+        #outputs = x + attention
         # print(x.shape, attention.shape, attention_score.shape)
         # outputs = torch.bmm(x, attention_score)
 
