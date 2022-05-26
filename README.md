@@ -15,4 +15,8 @@ Deep learning for Demand Forecasting
  | 7   | agg_methods                       |   list  | Методы аггрегации, применяемые внутри заданного окна
  | 8   | dynamic_filters                   |   list  | Названия колонок, которые используются в качестве фильтра
  | 9   | ewm_params                        |   dict  | Параметры pandas.ewm метода для каждого dynamic_filter
+ 
+ # Models
+ ## Params Dictionary
+ |   # | Column      | Dtype   | Description                                                                        |\n|----:|:------------|:--------|:-----------------------------------------------------------------------------------|\n|   0 | timedelta   | str     | Единица времени в задаче прогнозирования. Возможные значения - s, m, h, D, W, M, Y |\n|   1 | date_col    | str     | Колонка с датой                                                                    |\n|   2 | target      | str     | Прогнозируемая переменная                                                          |\n|   3 | id_cols     | list    | Ключи объектов, по которым производится группировка данных                         |\n|   4 | categorical | list    | Категориальные признаки                                                            |\n|   5 | real        | list    | Вещественные признаки                                                              |\n|   6 | model       | str     | Архитектура нейронной сети. Возможные значения - LSTM, GRU, TFT, DeepAR, NBeats    |\n|   7 | params      | dict    | Параметры модели
 
