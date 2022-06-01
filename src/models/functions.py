@@ -150,7 +150,7 @@ def train(df_train, epochs, train_loader, train_eval_loader,model,
 
             for c in df_out.columns:
                 df_out[c] = df_out[c] * target_stdev + target_mean
-
+            
             smape_ = smape(df_out.dropna()[target], df_out.dropna()['Model forecast'])
             print('Smape =', smape_)
 

@@ -45,7 +45,7 @@ class ShallowRegressionLSTM(nn.Module):
 
         self.linear = nn.Sequential(
             nn.Linear(in_features=self.hidden_units, out_features=self.hidden_units),
-            nn.Dropout(0.3),
+            nn.Dropout(self.dropout),
             nn.ReLU(),
             nn.BatchNorm1d(self.hidden_units),
             nn.Linear(in_features=self.hidden_units, out_features=1)
@@ -80,7 +80,7 @@ class GRU(nn.Module):
 
         self.linear = nn.Sequential(
             nn.Linear(in_features=self.hidden_units, out_features=self.hidden_units),
-            nn.Dropout(0.3),
+            nn.Dropout(self.dropout),
             nn.ReLU(),
             nn.BatchNorm1d(self.hidden_units),
             nn.Linear(in_features=self.hidden_units, out_features=1)

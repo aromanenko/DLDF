@@ -16,33 +16,33 @@
         "Actual_Price",
         "Promo_percent"
     ],
-    "model": "GRU",
+    "model": "LSTM",
     "params": {
         "LSTM": {
             "learning_rate": 0.001,
-            "epochs": 2,
+            "epochs": 5,
             "batch_size": 256,
-            "weight_decay": 0.001,
+            "weight_decay": 1e-05,
             "num_hidden_units": 64,
             "gamma": 0.95,
             "dropout": 0.3
         },
         "GRU": {
             "learning_rate": 0.001,
-            "epochs": 1,
+            "epochs": 4,
             "batch_size": 256,
-            "weight_decay": 0.001,
+            "weight_decay": 1e-05,
             "num_hidden_units": 64,
             "gamma": 0.95,
             "dropout": 0.3
         },
         "TFT": {
-            "learning_rate": 0.001,
+            "learning_rate": 0.004,
             "weight_decay": 0.001,
             "num_hidden_units": 64,
             "gamma": 0.95,
-            "epochs": 1,
-            "dropout": 0.3,
+            "epochs": 3,
+            "dropout": 0.25,
             "batch_size": 256,
             "gradient_clip_val": 0.1,
             "attention": 3,

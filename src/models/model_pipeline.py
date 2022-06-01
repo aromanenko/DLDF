@@ -1,6 +1,6 @@
-from architectures import *
-from functions import *
-from generate_features import read_json
+from src.models.architectures import *
+from src.models.functions import *
+from src.features.generate_features import read_json
 from ipywidgets import interact, interactive 
 from IPython.display import display
 import json
@@ -154,7 +154,8 @@ def fix_pred_format(res_test, config):
     return res_test
 
 
-def fit_secondary_model(data_lagged_features, config):
+def fit_secondary_model(data_lagged_
+                        , config):
     print('Biulding secondary model:')
     df_train, df_test, target_mean, target_stdev, features = preprocess(data_lagged_features,
                                                                         config['target'],
@@ -188,6 +189,7 @@ def pipeline(data_lagged_features, config):
         models_dict = {'LSTM': ShallowRegressionLSTM, 'GRU': GRU}
         model = models_dict[config['model']](len(features), config['params'][config['model']]['num_hidden_units'], config['params'][config['model']]['dropout'])
         loss_function = nn.L1Loss()
+        #loss_function = nn.MSELoss()
         optimizer = torch.optim.Adam(model.parameters(), lr=config['params'][config['model']]['learning_rate'], weight_decay=config['params'][config['model']]['weight_decay'])
         scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=config['params'][config['model']]['gamma'])
         epochs = config['params'][config['model']]['epochs']
