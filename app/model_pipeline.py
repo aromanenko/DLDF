@@ -34,11 +34,10 @@ def choose_model(model_config_filename):
 def pf_preprocess(df_train, df_test, config):
     df_train = df_train.reset_index()
     df_test = df_test.reset_index()
-    df_train["time_idx"] = df_train[config['date_col']].dt.dayofyear + (df_train[config['date_col']].dt.year - 2015) * 365
-    df_test["time_idx"] = df_test[config['date_col']].dt.dayofyear + (df_test[config['date_col']].dt.year - 2015) * 365
-    min_time_idx = df_train["time_idx"].min()
-    df_train["time_idx"] -= min_time_idx
-    df_test["time_idx"] -= min_time_idx
+    df_train['time_idx'] = (df_train[config['date_col']] - df_train[config['date_col']].min()).apply(
+        lambda x: x / np.timedelta64(1, config['timedelta'])).astype(int)
+    df_test['time_idx'] = (df_test[config['date_col']] - df_train[config['date_col']].min()).apply(
+        lambda x: x / np.timedelta64(1, config['timedelta'])).astype(int)
     for feature in config['categorical'] + config['id_cols']:
         df_train[feature] = df_train[feature].astype(str)
         df_test[feature] = df_test[feature].astype(str)
@@ -98,7 +97,7 @@ def pf_get_dataloader(df_train, df_test, config):
         **params
     )
 
-    batch_size = config['batch_size']
+    batch_size = config['params'][config['model']]['batch_size']
     train_dataloader = training.to_dataloader(
         train=True, batch_size=batch_size, num_workers=0
     )
@@ -111,32 +110,32 @@ def pf_get_model(training, config):
                    'NBeats' : NBeats}
     params = {
         "dataset": training,
-        "learning_rate": config['learning_rate'],
-        "dropout": config['dropout'],
-        "weight_decay": config['weight_decay']
+        "learning_rate": config['params'][config['model']]['learning_rate'],
+        "dropout": config['params'][config['model']]['dropout'],
+        "weight_decay": config['params'][config['model']]['weight_decay']
     }
     if config['model'] == 'DeepAR':
-        params["hidden_size"] = config['num_hidden_units']
+        params["hidden_size"] = config['params'][config['model']]['num_hidden_units']
     if config['model'] == 'TFT':
-        params["hidden_size"] = config['num_hidden_units']
-        params["attention_head_size"] = config['attention']
-        params["hidden_continuous_size"] = config['hidden_continuous_size']
+        params["hidden_size"] = config['params'][config['model']]['num_hidden_units']
+        params["attention_head_size"] = config['params'][config['model']]['attention']
+        params["hidden_continuous_size"] = config['params'][config['model']]['hidden_continuous_size']
         params["loss"] = SMAPE()
     model = models_dict[config['model']].from_dataset(**params)
     return model
 
 
 def fit_predict(model, training, train_dataloader, df_train, df_test, config):
-    trainer = pl.Trainer(max_epochs=config['epochs'],
+    trainer = pl.Trainer(max_epochs=config['params'][config['model']]['epochs'],
                          gpus=int(torch.cuda.is_available()),
-                         gradient_clip_val=config['gradient_clip_val'])
+                         gradient_clip_val=config['params'][config['model']]['gradient_clip_val'])
     trainer.fit(model, train_dataloaders=train_dataloader)
     if config['model'] == 'TFT':
         val_dataloader = df_test
     else:
         training_cutoff = df_train["time_idx"].max()
         validation = TimeSeriesDataSet.from_dataset(training, pd.concat([df_train, df_test]).reset_index(), min_prediction_idx=training_cutoff + 1)
-        val_dataloader = validation.to_dataloader(train=False, batch_size=config['batch_size'])
+        val_dataloader = validation.to_dataloader(train=False, batch_size=config['params'][config['model']]['batch_size'])
     pred, ind = model.predict(val_dataloader, return_index=True)
     res_test = df_test[config['id_cols'] + [config['date_col']]].astype(str)
     res_test['pred'] = None
@@ -162,14 +161,14 @@ def fit_secondary_model(data_lagged_features, config):
                                                                         config['id_cols'],
                                                                         config['date_col'])
     train_loader, test_loader, train_eval_loader = get_dataloaders(df_train, df_test,
-                                                                   config['target'], features, config["batch_size"])
-    model = ShallowRegressionLSTM(len(features), config['num_hidden_units'], config['dropout'])
+                                                                   config['target'], features, config['params']['LSTM']["batch_size"])
+    model = ShallowRegressionLSTM(len(features), config['params']['LSTM']['num_hidden_units'], config['params']['LSTM']['dropout'])
     loss_function = nn.L1Loss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=config['learning_rate'], weight_decay=config['weight_decay'])
-    scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=config['gamma'])
-    epochs = config['epochs']
+    optimizer = torch.optim.Adam(model.parameters(), lr=config['params']['LSTM']['learning_rate'], weight_decay=config['params']['LSTM']['weight_decay'])
+    scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=config['params']['LSTM']['gamma'])
+    epochs = config['params']['LSTM']['epochs']
     train(df_train, epochs, train_loader, train_eval_loader, model,
-          loss_function, optimizer, scheduler, target_mean, target_stdev, eval_=False)
+          loss_function, optimizer, scheduler, target_mean, target_stdev, config['target'], eval_=False)
     df_out = get_df_out(model, df_train, df_test, train_eval_loader, test_loader, config['target'], target_mean, target_stdev)
     ans = df_out[df_out[config['target']].isna()].drop(config['target'], axis=1).rename(
         columns={'Model forecast' : config['target']}).sort_values(
@@ -185,16 +184,16 @@ def pipeline(data_lagged_features, config):
     scl = (model_name in ['LSTM', 'GRU']) * 2
     df_train, df_test, target_mean, target_stdev, features = preprocess(data_lagged_features, target, id_cols, date_col, scl)
     if model_name in ['LSTM', 'GRU']:
-        train_loader, test_loader, train_eval_loader = get_dataloaders(df_train, df_test, target, features, config["batch_size"])
+        train_loader, test_loader, train_eval_loader = get_dataloaders(df_train, df_test, target, features, config['params'][config['model']]["batch_size"])
         models_dict = {'LSTM': ShallowRegressionLSTM, 'GRU': GRU}
-        model = models_dict[config['model']](len(features), config['num_hidden_units'], config['dropout'])
+        model = models_dict[config['model']](len(features), config['params'][config['model']]['num_hidden_units'], config['params'][config['model']]['dropout'])
         loss_function = nn.L1Loss()
-        optimizer = torch.optim.Adam(model.parameters(), lr=config['learning_rate'], weight_decay=config['weight_decay'])
-        scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=config['gamma'])
-        epochs = config['epochs']
+        optimizer = torch.optim.Adam(model.parameters(), lr=config['params'][config['model']]['learning_rate'], weight_decay=config['params'][config['model']]['weight_decay'])
+        scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=config['params'][config['model']]['gamma'])
+        epochs = config['params'][config['model']]['epochs']
         print('Training:')
         train(df_train, epochs, train_loader, train_eval_loader, model,
-              loss_function, optimizer, scheduler, target_mean, target_stdev)
+              loss_function, optimizer, scheduler, target_mean, target_stdev, target)
         df_out = get_df_out(model, df_train, df_test, train_eval_loader, test_loader, target, target_mean, target_stdev)
         ans = df_out[df_out[config['target']].isna()].drop(target, axis=1).rename(
             columns={'Model forecast' : target}).sort_values(

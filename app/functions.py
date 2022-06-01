@@ -37,6 +37,8 @@ def scale(df_train, df_test, target, scl):
     for c in tqdm_notebook(cols):
         mean = df_train[c].mean()
         stdev = df_train[c].std()
+        if stdev == 0:
+            continue
         df_train[c] = (df_train[c] - mean) / stdev
         df_test[c] = (df_test[c] - mean) / stdev
     return target_mean, target_stdev
@@ -136,12 +138,11 @@ def get_submission(path, df_out, target, id_cols, date_col):
     return ans
 
 def train(df_train, epochs, train_loader, train_eval_loader,model,
-      loss_function, optimizer, scheduler, target_mean, target_stdev, eval_=True):
+      loss_function, optimizer, scheduler, target_mean, target_stdev, target, eval_=True):
     for ix_epoch in range(epochs):
         print(f"Epoch {ix_epoch}\n---------")
         train_one_epoch(train_loader, model, loss_function, optimizer=optimizer, scheduler=scheduler, eval_=eval_)
         if eval_:
-            target='Demand'
             ystar_col = "Model forecast"
             df_train[ystar_col] = predict(train_eval_loader, model).numpy()
 
@@ -150,7 +151,7 @@ def train(df_train, epochs, train_loader, train_eval_loader,model,
             for c in df_out.columns:
                 df_out[c] = df_out[c] * target_stdev + target_mean
 
-            smape_ = smape(df_out.dropna()['Demand'], df_out.dropna()['Model forecast'])
+            smape_ = smape(df_out.dropna()[target], df_out.dropna()['Model forecast'])
             print('Smape =', smape_)
 
             print()
