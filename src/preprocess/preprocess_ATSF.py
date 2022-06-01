@@ -16,7 +16,7 @@ def process(data):
 
 	data.reset_index(inplace=True)
 	data["weekday"] = data['Date'].dt.weekday
-	data['weekday_name'] = data['Date'].dt.strftime('%A')
+	# data['weekday_name'] = data['Date'].dt.strftime('%A')
 	data["monthday"] = data['Date'].dt.day
 	data['is_weekend'] = data['weekday'].isin([5, 6]) * 1
 	data['month_period'] = 0
