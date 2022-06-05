@@ -209,4 +209,5 @@ def pipeline(data_lagged_features, config):
         res_test = fix_pred_format(res_test, config)
         ans2 = fit_secondary_model(data_lagged_features, config)
         res_test.loc[res_test[target].isna(), target] = ans2[res_test[target].isna()][target]
+        res_test[target] = np.maximum(0, res_test[target])
         return res_test[config['id_cols'] + [config['date_col']] + [config['target']]]
