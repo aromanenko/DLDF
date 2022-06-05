@@ -11,7 +11,7 @@ import torch
 import os
 import seaborn as sns
 from tqdm.contrib.itertools import product
-from architectures import *
+from src.models.architectures import *
 
 os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 
